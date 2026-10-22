@@ -1,0 +1,145 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="row g-4 mb-4 align-items-center">
+  <div class="col-md-6">
+    <h2 class="fw-bold mb-1"><i class="bi bi-scooter text-info me-2"></i>Collector Rider Dashboard</h2>
+    <p class="text-secondary mb-0">Go Online, accept nearby household pickup requests, weigh garbage on the AI Smart-Scale, and earn 20% commission.</p>
+  </div>
+  <div class="col-md-3">
+    <div class="neon-card neon-card-green py-3">
+      <div class="small text-secondary fw-bold">TOTAL RIDER EARNINGS</div>
+      <h3 class="mono fw-bold mb-0" style="color: var(--neon-green);">₹{{ profile.wallet_balance|floatformat:2 }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="neon-card neon-card-cyan py-3 d-flex justify-content-between align-items-center">
+      <div>
+        <div class="small text-secondary fw-bold">STATUS</div>
+        {% if profile.is_online %}
+          <div class="fw-bold text-success">ONLINE</div>
+        {% else %}
+          <div class="fw-bold text-danger">OFFLINE</div>
+        {% endif %}
+      </div>
+      <form method="POST" action="/collector/">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="toggle_online">
+        <button type="submit" class="btn btn-sm {% if profile.is_online %}btn-outline-danger{% else %}btn-neon{% endif %}">
+          {% if profile.is_online %}Go Offline{% else %}Go Online{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="neon-card h-100">
+      <h4 class="fw-bold mb-3">1. Nearby Household Orders</h4>
+      {% if not profile.is_online %}
+        <div class="alert alert-warning">You are OFFLINE. Click "Go Online" to see nearby orders.</div>
+      {% else %}
+        {% for o in available_orders %}
+          <div class="p-3 rounded-3 bg-dark border border-info mb-3 d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-bold text-info">Order #{{ o.id }} — {{ o.garbage_type.name }}</div>
+              <div class="small text-light">Address: {{ o.address }} (User: {{ o.household.username }})</div>
+              <div class="small text-secondary mono">Est. Weight: {{ o.estimated_weight_kg }} kg • Est. Payout: ₹{{ o.household_payout|floatformat:2 }}</div>
+            </div>
+            <form method="POST" action="/collector/">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="accept_order">
+              <input type="hidden" name="order_id" value="{{ o.id }}">
+              <button type="submit" class="btn btn-neon">Accept</button>
+            </form>
+          </div>
+        {% empty %}
+          <div class="text-secondary py-4 text-center">No pending household orders right now.</div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="neon-card h-100">
+      <h4 class="fw-bold mb-3"><i class="bi bi-cpu-fill text-warning me-2"></i>2. AI Smart-Scale Weighing & Delivery</h4>
+      {% for o in my_active_orders %}
+        <div class="p-3 rounded-3 bg-dark border {% if o.is_scale_anomaly %}border-danger{% else %}border-secondary{% endif %} mb-3">
+          <div class="d-flex justify-content-between mb-2">
+            <strong>Order #{{ o.id }} — {{ o.garbage_type.name }}</strong>
+            <span class="badge bg-info text-dark">{{ o.get_status_display }}</span>
+          </div>
+          <div class="small text-secondary mb-2">
+            Address: {{ o.address }} • Household Est.: <strong class="text-white mono">{{ o.estimated_weight_kg }} kg</strong>
+          </div>
+
+          {% if o.status == 'ACCEPTED' %}
+            <form method="POST" action="/collector/" class="row g-2 align-items-end mt-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="weigh_order">
+              <input type="hidden" name="order_id" value="{{ o.id }}">
+              <div class="col-7">
+                <label class="form-label small text-info fw-bold mb-1">Actual Weight on Digital Scale (kg)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  name="actual_weight_kg"
+                  placeholder="Enter scale weight in kg"
+                  class="form-control bg-black text-white border-info mono"
+                  oninput="checkScaleAnomaly(this, {{ o.estimated_weight_kg }}, 'scaleAlert_{{ o.id }}')"
+                  required
+                >
+              </div>
+              <div class="col-5">
+                <button type="submit" class="btn btn-neon w-100">Verify & Pay</button>
+              </div>
+              <div class="col-12 mt-2">
+                <div id="scaleAlert_{{ o.id }}" class="small mono text-secondary">
+                  <i class="bi bi-shield-check me-1"></i>AI Scale Guardrail active (±40% tolerance from {{ o.estimated_weight_kg }} kg)
+                </div>
+              </div>
+            </form>
+          {% else %}
+            <div class="small text-success mono fw-bold mb-2">
+              Actual Weight: {{ o.actual_weight_kg }} kg | Paid Household: ₹{{ o.household_payout|floatformat:2 }} | Your Commission: +₹{{ o.collector_earning|floatformat:2 }}
+            </div>
+            {% if o.is_scale_anomaly %}
+              <div class="badge bg-danger text-white mono p-2 w-100 text-start">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ o.anomaly_reason }} (Logged to Admin Audit)
+              </div>
+            {% else %}
+              <div class="badge bg-success bg-opacity-25 text-success border border-success mono p-2 w-100 text-start">
+                <i class="bi bi-patch-check-fill me-1"></i> {{ o.anomaly_reason }}
+              </div>
+            {% endif %}
+          {% endif %}
+        </div>
+      {% empty %}
+        <div class="text-secondary py-4 text-center">No active orders accepted yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  function checkScaleAnomaly(inputEl, estKg, alertId) {
+    const alertBox = document.getElementById(alertId);
+    const actualKg = parseFloat(inputEl.value);
+    if (isNaN(actualKg) || actualKg <= 0) {
+      alertBox.className = 'small mono text-secondary';
+      alertBox.innerHTML = `<i class="bi bi-shield-check me-1"></i>AI Scale Guardrail active (±40% tolerance from ${estKg} kg)`;
+      return;
+    }
+    const diffPct = ((actualKg - estKg) / Math.max(0.1, estKg)) * 100.0;
+    const sign = diffPct >= 0 ? '+' : '';
+    if (Math.abs(diffPct) > 40.0) {
+      alertBox.className = 'small mono text-danger fw-bold p-2 rounded bg-danger bg-opacity-10 border border-danger';
+      alertBox.innerHTML = `<i class="bi bi-exclamation-octagon-fill me-1"></i>AI SCALE ANOMALY (${sign}${diffPct.toFixed(1)}%): Deviates >40% from ${estKg} kg! This transaction will be flagged in Admin God-Mode.`;
+    } else {
+      alertBox.className = 'small mono text-success fw-bold p-2 rounded bg-success bg-opacity-10 border border-success';
+      alertBox.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>AI SCALE VERIFIED (${sign}${diffPct.toFixed(1)}%): Within normal ±40% tolerance.`;
+    }
+  }
+</script>
+{% endblock %}

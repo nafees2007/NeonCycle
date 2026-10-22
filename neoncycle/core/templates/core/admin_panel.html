@@ -1,0 +1,206 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+<div class="mb-4">
+  <h2 class="fw-bold mb-1"><i class="bi bi-shield-lock-fill text-danger me-2"></i>Admin God-Mode Dashboard</h2>
+  <p class="text-secondary mb-0">Set live garbage prices, monitor AI Smart-Scale fraud alerts, inspect all users, and view statistics graphs.</p>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="neon-card neon-card-green">
+      <div class="small text-secondary fw-bold">TOTAL USERS</div>
+      <h2 class="mono fw-bold mt-2 mb-0">{{ total_users }}</h2>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="neon-card neon-card-cyan">
+      <div class="small text-secondary fw-bold">TOTAL ORDERS</div>
+      <h2 class="mono fw-bold mt-2 mb-0 text-info">{{ total_orders }}</h2>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="neon-card neon-card-pink">
+      <div class="small text-secondary fw-bold">GARBAGE COLLECTED</div>
+      <h2 class="mono fw-bold mt-2 mb-0" style="color: var(--neon-pink);">{{ total_kg }} kg</h2>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="neon-card neon-card-green">
+      <div class="small text-secondary fw-bold">TOTAL PAYOUTS</div>
+      <h2 class="mono fw-bold mt-2 mb-0 text-success">₹{{ total_payouts|floatformat:2 }}</h2>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="neon-card h-100">
+      <h4 class="fw-bold mb-3">1. Control Live Garbage Prices</h4>
+      <form method="POST" action="/admin-panel/" class="row g-2 mb-4 p-3 rounded bg-dark border border-secondary">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_garbage">
+        <div class="col-5">
+          <input type="text" name="name" placeholder="New Garbage Name" class="form-control form-control-sm bg-black text-white border-secondary" required>
+        </div>
+        <div class="col-3">
+          <input type="text" name="code" placeholder="Ticker (e.g. BAT)" class="form-control form-control-sm bg-black text-white border-secondary mono" required>
+        </div>
+        <div class="col-2">
+          <input type="number" step="0.5" name="price_per_kg" placeholder="₹/kg" class="form-control form-control-sm bg-black text-white border-secondary mono" required>
+        </div>
+        <div class="col-2">
+          <button type="submit" class="btn btn-sm btn-info w-100 fw-bold">Add</button>
+        </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-dark align-middle">
+          <thead>
+            <tr class="text-secondary small">
+              <th>Garbage Type</th>
+              <th>Ticker</th>
+              <th>Current Price</th>
+              <th>Update Price (₹/kg)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in prices %}
+            <tr>
+              <td class="fw-bold">{{ p.name }}</td>
+              <td class="mono text-info">{{ p.code }}</td>
+              <td class="mono fw-bold text-success">₹{{ p.price_per_kg|floatformat:2 }}</td>
+              <td>
+                <form method="POST" action="/admin-panel/" class="d-flex gap-2">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="update_price">
+                  <input type="hidden" name="garbage_id" value="{{ p.id }}">
+                  <input type="number" step="0.5" name="new_price" value="{{ p.price_per_kg }}" class="form-control form-control-sm bg-black text-white border-secondary mono" style="width: 95px;">
+                  <button type="submit" class="btn btn-sm btn-neon">Save</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="neon-card mb-4">
+      <h5 class="fw-bold mb-3">2. Statistics Graph (Live Prices per kg)</h5>
+      <canvas id="priceChart" height="130"></canvas>
+    </div>
+
+    <div class="neon-card">
+      <h5 class="fw-bold mb-3">3. All Registered Users</h5>
+      <div class="table-responsive">
+        <table class="table table-dark table-sm align-middle mb-0">
+          <thead>
+            <tr class="text-secondary small">
+              <th>Username</th>
+              <th>Role</th>
+              <th>Wallet</th>
+              <th>CO₂ Saved</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for prof in all_profiles %}
+            <tr>
+              <td class="fw-bold">{{ prof.user.username }}</td>
+              <td><span class="badge bg-info text-dark">{{ prof.role }}</span></td>
+              <td class="mono text-success">₹{{ prof.wallet_balance|floatformat:2 }}</td>
+              <td class="mono">{{ prof.co2_saved_kg }} kg</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI SCALE FRAUD & ANOMALY AUDIT MONITOR -->
+<div class="neon-card neon-card-pink">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+      <i class="bi bi-robot text-danger me-2"></i>4. AI Scale Fraud & Anomaly Audit Monitor
+    </h4>
+    <span class="badge bg-dark border border-danger text-danger mono">Threshold: > ±40% Weight Deviation</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark align-middle mb-0">
+      <thead>
+        <tr class="text-secondary small">
+          <th>Order ID</th>
+          <th>Household</th>
+          <th>Collector Rider</th>
+          <th>Material</th>
+          <th>Est. Weight</th>
+          <th>Actual Scale Weight</th>
+          <th>Variance</th>
+          <th>AI Scale Verdict</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in all_orders %}
+        <tr class="{% if o.is_scale_anomaly %}table-danger text-dark fw-bold{% endif %}">
+          <td class="mono">#{{ o.id }}</td>
+          <td>{{ o.household.username }}</td>
+          <td>{% if o.collector %}{{ o.collector.username }}{% else %}Unassigned{% endif %}</td>
+          <td>{{ o.garbage_type.name }}</td>
+          <td class="mono">{{ o.estimated_weight_kg }} kg</td>
+          <td class="mono">{% if o.actual_weight_kg %}{{ o.actual_weight_kg }} kg{% else %}Pending{% endif %}</td>
+          <td class="mono">
+            {% if o.actual_weight_kg %}
+              {{ o.weight_variance_pct }}%
+            {% else %}
+              --
+            {% endif %}
+          </td>
+          <td>
+            {% if not o.actual_weight_kg %}
+              <span class="badge bg-secondary">Awaiting Scale</span>
+            {% elif o.is_scale_anomaly %}
+              <span class="badge bg-danger text-white">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ o.anomaly_reason }}
+              </span>
+            {% else %}
+              <span class="badge bg-success">
+                <i class="bi bi-check-circle-fill me-1"></i>{{ o.anomaly_reason }}
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-secondary py-3">No orders recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  new Chart(document.getElementById('priceChart'), {
+    type: 'bar',
+    data: {
+      labels: [{% for p in prices %}'{{ p.name }}',{% endfor %}],
+      datasets: [{
+        label: 'Price (₹/kg)',
+        data: [{% for p in prices %}{{ p.price_per_kg }},{% endfor %}],
+        backgroundColor: ['#00ff9d', '#00f0ff', '#ff007f', '#b537f2', '#ffb800'],
+        borderRadius: 8
+      }]
+    },
+    options: {
+      plugins: { legend: { labels: { color: '#fff' } } },
+      scales: {
+        x: { ticks: { color: '#cbd5e1' } },
+        y: { ticks: { color: '#cbd5e1' } }
+      }
+    }
+  });
+</script>
+{% endblock %}

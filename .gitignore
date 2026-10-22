@@ -1,0 +1,18 @@
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Optional: Uncomment the line below if you do NOT want to share your local sample accounts/orders
+# db.sqlite3

@@ -1,0 +1,112 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 75vh;">
+  <div class="col-md-5 col-lg-4">
+
+    {% if error %}
+      <div class="alert alert-danger text-center fw-bold small mb-3">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ error }}
+      </div>
+    {% endif %}
+
+    <!-- 1. LOGIN CARD (SHOWN FIRST BY DEFAULT) -->
+    <div class="neon-card neon-card-cyan" id="loginCard">
+      <div class="text-center mb-4">
+        <h3 class="fw-bold mb-1">Login to <span style="color: var(--neon-green);">NEONCYCLE</span></h3>
+        <p class="text-secondary small mb-0">Enter your credentials to access your portal</p>
+      </div>
+
+      <form method="POST" action="/login/">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="login">
+
+        <div class="mb-3">
+          <label class="form-label small text-secondary fw-bold">USERNAME</label>
+          <input type="text" name="username" class="form-control bg-dark text-white border-secondary" placeholder="Enter your username" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small text-secondary fw-bold">PASSWORD</label>
+          <input type="password" name="password" class="form-control bg-dark text-white border-secondary" placeholder="Enter your password" required>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label small text-info fw-bold">LOGIN AS ROLE</label>
+          <select name="role" class="form-select bg-dark text-white border-info">
+            <option value="HOUSEHOLD">1. Household</option>
+            <option value="COLLECTOR">2. Collector Rider</option>
+            <option value="RECYCLER">3. Recycler Hub</option>
+            <option value="ADMIN">4. Admin God-Mode</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-neon w-100 py-2 fs-6">
+          Login
+        </button>
+      </form>
+
+      <div class="text-center mt-4 pt-3 border-top border-secondary small">
+        <span class="text-secondary">Don't have an account?</span>
+        <a href="#" class="text-info fw-bold text-decoration-none ms-1" onclick="showRegister(event)">Register here</a>
+      </div>
+    </div>
+
+    <!-- 2. REGISTER CARD (HIDDEN UNTIL USER CLICKS 'REGISTER HERE') -->
+    <div class="neon-card neon-card-green" id="registerCard" style="display: none;">
+      <div class="text-center mb-4">
+        <h3 class="fw-bold mb-1">Create Account</h3>
+        <p class="text-secondary small mb-0">Register a new account on <span style="color: var(--neon-green);">NEONCYCLE</span></p>
+      </div>
+
+      <form method="POST" action="/login/">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="register">
+
+        <div class="mb-3">
+          <label class="form-label small text-secondary fw-bold">USERNAME</label>
+          <input type="text" name="username" class="form-control bg-dark text-white border-secondary" placeholder="Choose a username" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small text-secondary fw-bold">PASSWORD</label>
+          <input type="password" name="password" class="form-control bg-dark text-white border-secondary" placeholder="Create a password" required>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label small text-info fw-bold">SELECT YOUR ROLE</label>
+          <select name="role" class="form-select bg-dark text-white border-info">
+            <option value="HOUSEHOLD">1. Household</option>
+            <option value="COLLECTOR">2. Collector Rider</option>
+            <option value="RECYCLER">3. Recycler Hub</option>
+            <option value="ADMIN">4. Admin God-Mode</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-neon w-100 py-2 fs-6">
+          Register Account
+        </button>
+      </form>
+
+      <div class="text-center mt-4 pt-3 border-top border-secondary small">
+        <span class="text-secondary">Already have an account?</span>
+        <a href="#" class="text-info fw-bold text-decoration-none ms-1" onclick="showLogin(event)">Login here</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function showRegister(e) {
+    e.preventDefault();
+    document.getElementById('loginCard').style.display = 'none';
+    document.getElementById('registerCard').style.display = 'block';
+  }
+
+  function showLogin(e) {
+    e.preventDefault();
+    document.getElementById('registerCard').style.display = 'none';
+    document.getElementById('loginCard').style.display = 'block';
+  }
+</script>
+{% endblock %}

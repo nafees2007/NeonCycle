@@ -1,0 +1,245 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+<div class="mb-4">
+  <h2 class="fw-bold mb-1"><i class="bi bi-house-heart-fill text-success me-2"></i>Household Portal</h2>
+  <p class="text-secondary mb-0">Check the AI 7-Day Scrap Price Forecast ("Hold or Sell" Signal), book a pickup, and track your collector in real time.</p>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-4">
+    <div class="neon-card neon-card-green">
+      <div class="text-secondary small fw-bold">TOTAL EARNINGS</div>
+      <h2 class="mono fw-bold mt-2 mb-0" style="color: var(--neon-green);">₹{{ profile.wallet_balance|floatformat:2 }}</h2>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="neon-card neon-card-cyan">
+      <div class="text-secondary small fw-bold">SOCIETY IMPACT: CO₂ SAVED</div>
+      <h2 class="mono fw-bold mt-2 mb-0 text-info">{{ profile.co2_saved_kg }} kg</h2>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="neon-card neon-card-pink">
+      <div class="text-secondary small fw-bold">EQUIVALENT TREES SAVED</div>
+      <h2 class="mono fw-bold mt-2 mb-0" style="color: var(--neon-pink);">{{ trees_planted }} Trees</h2>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- LEFT COLUMN: AI 7-Day Price Forecaster + Pickup Request Form -->
+  <div class="col-lg-5">
+    <div class="neon-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold mb-0">
+          <i class="bi bi-graph-up-arrow text-info me-2"></i>1. AI 7-Day Price Forecaster
+        </h4>
+        <span class="badge bg-dark border border-info text-info mono" id="aiConfidenceBadge">AI Confidence: --%</span>
+      </div>
+
+      <!-- AI Forecast Interactive Card -->
+      <div class="p-3 rounded-3 mb-4" style="background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.3);">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="small text-secondary fw-bold text-uppercase">AI Market Signal</span>
+          <span id="aiSignalBadge" class="badge bg-info text-dark fw-bold px-3 py-2">Analyzing Market...</span>
+        </div>
+
+        <p id="aiReasonText" class="small text-light mb-3">
+          Select a garbage type and enter weight below to see whether to sell today or hold for higher profit.
+        </p>
+
+        <div class="row g-2 text-center mb-3">
+          <div class="col-4">
+            <div class="p-2 rounded bg-dark border border-secondary">
+              <div class="text-secondary" style="font-size: 0.72rem;">TODAY'S PAYOUT</div>
+              <div class="mono fw-bold text-white" id="aiPayoutToday">₹0.00</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 rounded bg-dark border border-secondary">
+              <div class="text-secondary" style="font-size: 0.72rem;">7-DAY PEAK (<span id="aiBestDay">Day +0</span>)</div>
+              <div class="mono fw-bold text-info" id="aiPayoutPeak">₹0.00</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 rounded bg-dark border border-secondary">
+              <div class="text-secondary" style="font-size: 0.72rem;">EXTRA PROFIT</div>
+              <div class="mono fw-bold text-success" id="aiExtraProfit">+₹0.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7-Day Forecast Chart -->
+        <div class="bg-dark p-2 rounded border border-secondary">
+          <canvas id="forecastChart" height="145"></canvas>
+        </div>
+
+        <div class="d-flex justify-content-between mt-2 small text-secondary mono" style="font-size: 0.75rem;">
+          <span>Live Supply: <strong class="text-light" id="aiSupplyKg">0 kg</strong></span>
+          <span>Recycler Demand: <strong class="text-warning" id="aiDemandKg">0 kg</strong></span>
+        </div>
+      </div>
+
+      <!-- Pickup Booking Form -->
+      <h5 class="fw-bold mb-3"><i class="bi bi-truck text-success me-2"></i>Book Garbage Collection</h5>
+      <form method="POST" action="/household/">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label small text-secondary fw-bold">GARBAGE TYPE</label>
+          <select name="garbage_id" id="garbageSelect" class="form-select bg-dark text-white border-info" onchange="updateAIForecast()" required>
+            {% for p in prices %}
+              <option value="{{ p.id }}">{{ p.name }} — ₹{{ p.price_per_kg|floatformat:2 }}/kg</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small text-secondary fw-bold">ESTIMATED WEIGHT (KG)</label>
+          <input type="number" step="0.5" min="0.5" name="estimated_weight_kg" id="weightInput" value="5.0" oninput="updateAIForecast()" class="form-control bg-dark text-white border-info mono" required>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label small text-secondary fw-bold">PICKUP ADDRESS</label>
+          <input type="text" name="address" placeholder="Enter your full house address" class="form-control bg-dark text-white border-secondary" required>
+        </div>
+
+        <button type="submit" class="btn btn-neon w-100 py-3">
+          Lock Today's Rate & Request Pickup
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN: Live Order Tracker & History -->
+  <div class="col-lg-7">
+    <div class="neon-card h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold mb-0"><i class="bi bi-geo-alt-fill text-warning me-2"></i>2. Live Order Tracker</h4>
+        <a href="/household/" class="btn btn-sm btn-outline-info">Refresh Status</a>
+      </div>
+
+      {% if latest_order %}
+        <div class="p-3 rounded-3 bg-dark border border-secondary mb-4">
+          <div class="d-flex justify-content-between mb-3">
+            <span class="fw-bold text-info">Order #{{ latest_order.id }} — {{ latest_order.garbage_type.name }}</span>
+            <span class="badge bg-success">{{ latest_order.get_status_display }}</span>
+          </div>
+          <div class="row g-2">
+            <div class="col-3"><div class="step-box {% if latest_order.step_num >= 1 %}active{% endif %}">1. Requested</div></div>
+            <div class="col-3"><div class="step-box {% if latest_order.step_num >= 2 %}active{% endif %}">2. Rider Assigned</div></div>
+            <div class="col-3"><div class="step-box {% if latest_order.step_num >= 3 %}active{% endif %}">3. Weighed & Paid</div></div>
+            <div class="col-3"><div class="step-box {% if latest_order.step_num >= 4 %}active{% endif %}">4. Recycled</div></div>
+          </div>
+        </div>
+      {% else %}
+        <div class="alert alert-secondary">No orders yet. Check the AI forecast and submit a pickup request on the left!</div>
+      {% endif %}
+
+      <h6 class="text-secondary fw-bold small text-uppercase mb-3">Order History</h6>
+      <div class="table-responsive">
+        <table class="table table-dark align-middle mb-0">
+          <thead>
+            <tr class="text-secondary small">
+              <th>ID</th>
+              <th>Type</th>
+              <th>Est. Weight</th>
+              <th>Actual Weight</th>
+              <th>Payout</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in orders %}
+            <tr>
+              <td class="mono text-info">#{{ o.id }}</td>
+              <td>{{ o.garbage_type.name }}</td>
+              <td class="mono">{{ o.estimated_weight_kg }} kg</td>
+              <td class="mono">{% if o.actual_weight_kg %}{{ o.actual_weight_kg }} kg{% else %}Waiting{% endif %}</td>
+              <td class="mono fw-bold text-success">₹{{ o.household_payout|floatformat:2 }}</td>
+              <td><span class="badge bg-info text-dark">{{ o.get_status_display }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-secondary py-3">No pickup requests yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let forecastChartInstance = null;
+
+  async function updateAIForecast() {
+    const garbageId = document.getElementById('garbageSelect').value;
+    const weightVal = document.getElementById('weightInput').value || 5.0;
+
+    try {
+      const res = await fetch(`/api/ai-forecast/?garbage_id=${garbageId}&weight_kg=${weightVal}`);
+      const data = await res.json();
+      if (data.status !== 'ok') return;
+
+      document.getElementById('aiConfidenceBadge').textContent = `AI Confidence: ${data.confidence}%`;
+
+      const badge = document.getElementById('aiSignalBadge');
+      badge.textContent = data.signal_badge;
+      badge.className = `badge bg-${data.signal_color} text-dark fw-bold px-3 py-2`;
+
+      document.getElementById('aiReasonText').textContent = data.reason;
+      document.getElementById('aiPayoutToday').textContent = `₹${data.payout_today.toFixed(2)}`;
+      document.getElementById('aiBestDay').textContent = data.best_day_label;
+      document.getElementById('aiPayoutPeak').textContent = `₹${data.payout_peak.toFixed(2)}`;
+      document.getElementById('aiExtraProfit').textContent = `+₹${data.extra_profit.toFixed(2)}`;
+      document.getElementById('aiSupplyKg').textContent = `${data.supply_kg} kg`;
+      document.getElementById('aiDemandKg').textContent = `${data.demand_kg} kg`;
+
+      const ctx = document.getElementById('forecastChart').getContext('2d');
+      if (forecastChartInstance) {
+        forecastChartInstance.data.labels = data.labels;
+        forecastChartInstance.data.datasets[0].label = `${data.category} Forecast (₹/kg)`;
+        forecastChartInstance.data.datasets[0].data = data.forecast_prices;
+        forecastChartInstance.update();
+      } else {
+        forecastChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: `${data.category} Forecast (₹/kg)`,
+              data: data.forecast_prices,
+              borderColor: '#00ff9d',
+              backgroundColor: 'rgba(0, 255, 157, 0.15)',
+              borderWidth: 2.5,
+              pointBackgroundColor: '#00f0ff',
+              pointRadius: 4,
+              fill: true,
+              tension: 0.35
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { labels: { color: '#e2e8f0', font: { size: 11 } } }
+            },
+            scales: {
+              x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+              y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+          }
+        });
+      }
+    } catch (err) {
+      console.error('AI Forecast error:', err);
+    }
+  }
+
+  // Run immediately when page loads and refresh every 6 seconds with live market changes
+  document.addEventListener('DOMContentLoaded', () => {
+    updateAIForecast();
+    setInterval(updateAIForecast, 6000);
+  });
+</script>
+{% endblock %}
