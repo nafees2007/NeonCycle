@@ -31,7 +31,7 @@
 
 | Layer | Technology |
 | :--- | :--- |
-| **Frontend** | HTML5, CSS3 (Neon Gen-Z Dark Theme), JavaScript (ES6 `fetch` API), Bootstrap 5.3, Bootstrap Icons |
+| **Frontend** | HTML5, CSS3, JavaScript (ES6 `fetch` API), Bootstrap 5.3, Bootstrap Icons |
 | **Data Visualization** | Chart.js 4.4 (7-Day AI Forecast Line Graph & Admin Live Price Bar Graph) |
 | **Backend** | Python 3, Django (MVT Architecture) |
 | **AI & Analytics** | Python Supply–Demand Regression Forecaster (`core/ai_scanner.py`) & Smart-Scale Anomaly Guardrail (`core/models.py`) |
@@ -73,8 +73,8 @@ neoncycle_project/
 ### 1. Clone the Repository
 Open **Terminal** (Mac/Linux) or **Command Prompt / PowerShell / Git Bash** (Windows) and run:
 ```bash
-git clone [https://github.com/](https://github.com/)<YOUR-GITHUB-USERNAME>/<YOUR-REPO-NAME>.git
-cd <YOUR-REPO-NAME>
+git clone https://github.com/nafees2007/NeonCycle.git
+cd NeonCycle
 ```
 
 ### 2. Create & Activate a Virtual Environment
@@ -83,13 +83,6 @@ cd <YOUR-REPO-NAME>
 python -m venv venv
 venv\Scripts\activate
 ```
-
-**On Mac / Linux:**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
 ### 3. Install Dependencies
 ```bash
 pip install -r requirements.txt
